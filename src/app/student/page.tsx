@@ -3,7 +3,35 @@
 import React from 'react';
 import Image from "next/image";
 
+
 const LoginPage: React.FC = () => {
+    const [studentId, setStudentId] = React.useState('');
+    const [password, setPassword] = React.useState('');
+
+    const handleLogin = async () => {
+        if (!studentId || !password) {
+            alert('Please fill in all fields');
+            return;
+            }
+
+        try {
+            const res = await fetch('/api/studentauth', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ studentId: studentId, password: password }),
+            });
+
+            if (res.ok) {
+                window.location.href = '/student/dashboard';
+            } else {
+                const data = await res.json();
+                alert(data.error);
+            }
+        } catch (error) {
+            alert('Please try again later.');
+        }
+    }
+
     return (
         <div className="flex flex-col min-h-screen bg-gradient-to-r from-yellow-100 to-orange-200 text-black animate-gradient-rotate y-10">
             <div className="flex justify-center py-5">
@@ -17,7 +45,7 @@ const LoginPage: React.FC = () => {
                     className="bg-white p-10 rounded-lg shadow-lg w-full max-w-md"
                     onSubmit={(e) => {
                         e.preventDefault();
-                        window.location.href = '/student/dashboard';
+                        handleLogin();
                     }}
                 >
                     <div className="mb-5">
@@ -26,42 +54,45 @@ const LoginPage: React.FC = () => {
                             type="text" 
                             id="studentId" 
                             name="studentId" 
-                            className="w-full p-2 border border-gray-300 rounded-lg" 
-                            maxLength={7}
-                            onInput={(e) => {
-                                const input = e.target as HTMLInputElement;
-                                if (/[^0-9]/.test(input.value)) {
-                                    input.classList.add('border-red-500');
-                                } else {
-                                    input.classList.remove('border-red-500');
+                            value={studentId}
+                            onChange={(e) => {
+                                const value = e.target.value;
+                                if (/^\d{0,7}$/.test(value)) {
+                                    setStudentId(value);
                                 }
-                                input.value = input.value.replace(/[^0-9]/g, '');
                             }}
+                            className="w-full p-2 border border-gray-300 rounded-lg" 
                         />
                     </div>
                     <div className="mb-5">
                         <label htmlFor="password" className="block text-lg font-bold mb-2">Password:</label>
-                        <input type="password" id="password" name="password" className="w-full p-2 border border-gray-300 rounded-lg" />
+                        <input 
+                            type="password" 
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            name="password" 
+                            className="w-full p-2 border border-gray-300 rounded-lg"
+                        />
                     </div>
-                    <button type="submit" className="w-full bg-yellow-400 text-black font-bold py-2 rounded-lg hover:bg-amber-200">Login</button>
-                <div className="flex justify-center mt-5">
                     <button 
-                        type="button" 
-                        className="w-full bg-blue-400 text-white font-bold py-2 rounded-lg hover:bg-blue-300"
-                        onClick={() => {
-                            const studentId = (document.getElementById('studentId') as HTMLInputElement).value;
-                            const password = (document.getElementById('password') as HTMLInputElement).value;
-                            if (studentId && password) {
-                                //window.location.href = '/student/create-account';
-                                alert('Created account for ' + studentId);
-                            } else {
-                                alert('Please fill in all fields');
-                            }
-                        }}
+                        type="submit" 
+                        id="loginButton" 
+                        className="w-full bg-yellow-400 text-black font-bold py-2 rounded-lg hover:bg-amber-200 disabled:bg-gray-300" 
+                        disabled={!studentId || !password}
                     >
-                        Create Account
+                        Login
                     </button>
-                </div>
+                    <div className="flex justify-center mt-5">
+                        <button 
+                            type="button" 
+                            className="w-full bg-blue-400 text-white font-bold py-2 rounded-lg hover:bg-blue-300"
+                            onClick={() => {
+                                window.location.href = '/student/createAccount';
+                            }}
+                        >
+                            Create Account
+                        </button>
+                    </div>
                 </form>
             </div>
         </div>
