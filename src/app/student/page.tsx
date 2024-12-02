@@ -15,7 +15,7 @@ const LoginPage: React.FC = () => {
             }
 
         try {
-            const res = await fetch('/api/studentauth', {
+            const res = await fetch('/api/student/studentauth', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ studentId: studentId, password: password }),

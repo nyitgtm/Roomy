@@ -22,7 +22,7 @@ const CreateAccountPage: React.FC = () => {
         }
 
         try {
-            const res = await fetch('/api/createstudent', {
+            const res = await fetch('/api/student/createstudent', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ studentId: studentId, email: email, password: password, fullName: fullName }),
