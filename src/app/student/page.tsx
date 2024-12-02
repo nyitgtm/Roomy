@@ -25,7 +25,7 @@ const LoginPage: React.FC = () => {
                 window.location.href = '/student/dashboard';
             } else {
                 const data = await res.json();
-                alert(data.error);
+                alert("Invalid student ID or password");
             }
         } catch (error) {
             alert('Please try again later.');
