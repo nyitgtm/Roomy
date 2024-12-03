@@ -280,6 +280,27 @@ const FacultyDashboard: React.FC = () => {
         }
     };
 
+    const cancelBooking = async (bookingId: number) => {
+        try {
+            const res = await fetch('/api/booking/updatebooking', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ bookingId: bookingId, newStatus: "Declined" }),
+            });
+
+            if (res.ok) {
+                await getBookingsForStudent();
+                await getBookingsByDate();
+            } else {
+                alert("Booking cancellation failed.");
+            }
+        } catch (error) {
+            console.error("Error cancelling booking", error);
+            alert("Booking cancellation failed.");
+        }
+    };
+
+
     return (
         <div className="flex flex-col min-h-screen bg-gradient-to-r from-yellow-100 to-orange-200 text-black">
             {/* Logo and Header */}
@@ -354,6 +375,16 @@ const FacultyDashboard: React.FC = () => {
                                     <div>
                                         <span className='font-bold'>{studyRooms.find(room => room.room_id === booking.room_id)?.room_name}</span>
                                         <p>{(booking.date).split('T')[0]} {booking.start_time} - {booking.end_time}</p>
+                                    </div>
+                                    <div>
+                                        {booking.status !== "Declined" && (
+                                            <button
+                                                className="bg-red-500 text-white p-2 rounded-lg hover:bg-red-400"
+                                                onClick={async () => await cancelBooking(booking.booking_id)}
+                                            >
+                                                Cancel
+                                            </button>
+                                        )}
                                     </div>
                                     <span
                                         className={`px-3 py-1 rounded-full text-white ${
