@@ -14,6 +14,7 @@ const AdminDashboard: React.FC = () => {
     const [allBookings, setAllBookings] = useState<any[]>([]);
     const [allPendingBookings, setAllPendingBookings] = useState<any[]>([]);
     const [allStudents, setAllStudents] = useState<any[]>([]);
+    const [selectedBooking, setSelectedBooking] = useState<any | null>(null);
 
     const [newLocation, setNewLocation] = useState("");
     const [newRoomName, setNewRoomName] = useState("");
@@ -522,16 +523,47 @@ const AdminDashboard: React.FC = () => {
                 {/* Different Types of Study Rooms */}
                 {studyRooms && (
                     <div className="w-full max-w-4xl mt-10 bg-white p-5 rounded-lg shadow-lg">
-                        {selectedRoom && selectedTime && (
-                            <div className="flex justify-end">
-                                <button
-                                    className="bg-blue-500 text-white p-2 rounded-full hover:bg-blue-400 m-4"
-                                    onClick={() => {
-                                        handleButtonClick();
-                                    }}
-                                >Checkout</button>
-                            </div>
-                        )}
+                        {selectedRoom && selectedTime && (() => {
+                            const convertTo24HourFormat = (time : string) => {
+                                const [hourMin, period] = time.split(/(am|pm)/);
+                                let [hours, minutes] = hourMin.split(':').map((part) => parseInt(part, 10)); // Parse as integers
+                                if (isNaN(hours)) hours = -1;
+                                if (isNaN(minutes)) minutes = 0;
+                                if (period === 'pm' && hours !== 12) {
+                                    hours += 12; // Convert PM to 24-hour format
+                                }
+                                if (period === 'am' && hours === 12) {
+                                    hours = 0; // Convert midnight (12 AM) to 00:00
+                                }
+                                return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
+                            };
+                            const isTaken = allBookings && allBookings.some(
+                                (booking) =>
+                                    booking.status === 'Approved' &&
+                                    booking.room_id === selectedRoom &&
+                                    booking.date.split('T')[0] === selectedDate.split('T')[0] &&
+                                    booking.start_time === convertTo24HourFormat(selectedTime)
+                            );
+                            return (
+                                <div className="flex justify-end">
+                                    <button
+                                        className={`bg-${isTaken ? 'red' : 'blue'}-500 text-white p-2 rounded-full hover:bg-${isTaken ? 'red' : 'blue'}-400 m-4`}
+                                        onClick={async () => {
+                                            if (isTaken) {
+                                                await updateBookingStatus(selectedBooking.booking_id, 'Declined');
+                                                setSelectedTime("");
+                                                await getBookingsByDate();
+                                                await getBookingsForStudent();
+                                            } else {
+                                                handleButtonClick();
+                                            }
+                                        }}
+                                    >
+                                        {isTaken ? 'Delete' : 'Checkout'}
+                                    </button>
+                                </div>
+                            );
+                        })()}
                         <h2 className="text-2xl font-bold mb-4 text-center">Available Rooms</h2>
                         <select
                             className="w-full p-2 border border-gray-300 rounded-lg mb-4"
@@ -615,17 +647,25 @@ const AdminDashboard: React.FC = () => {
                                                                     <div
                                                                         key={i}
                                                                         className={`p-1 rounded-lg text-center text-sm min-w-[50px] cursor-pointer ${
-                                                                            isTaken
-                                                                            ? 'bg-red-500 text-white cursor-not-allowed' // Red if taken and not clickable
-                                                                            : selectedRoom === room.room_id && selectedTime === time
+                                                                            (selectedRoom === room.room_id && selectedTime === time)
                                                                             ? 'bg-yellow-500' // Highlight if selected
+                                                                            : isTaken
+                                                                            ? 'bg-red-500 text-white hover:bg-gray-300'
                                                                             : 'bg-green-500 text-white hover:bg-gray-300'
                                                                         }`}
                                                                         onClick={() => {
-                                                                            if (!isTaken) {
                                                                             setSelectedTime(time);
                                                                             setSelectedBuilding(room.location);
                                                                             setSelectedRoom(room.room_id);
+                                                                            if (isTaken) {
+                                                                                const takenBooking = allBookings.find(
+                                                                                    (booking) =>
+                                                                                        booking.status === 'Approved' &&
+                                                                                        booking.room_id === room.room_id &&
+                                                                                        booking.date.split('T')[0] === selectedDate.split('T')[0] &&
+                                                                                        booking.start_time === convertTo24HourFormat(time)
+                                                                                );
+                                                                                setSelectedBooking(takenBooking || null);
                                                                             }
                                                                         }}
                                                                     >
