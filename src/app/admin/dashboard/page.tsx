@@ -1,37 +1,274 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { use, useState, useEffect } from 'react';
 import Image from "next/image";
+import { useRouter } from 'next/navigation';
 
-const FacultyDashboard: React.FC = () => {
+const AdminDashboard: React.FC = () => {
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [selectedBuilding, setSelectedBuilding] = useState("");
     const [selectedTime, setSelectedTime] = useState("");
-    const [isSuggestingTime, setIsSuggestingTime] = useState(false);
+    const [isBookingOpen, setIsBookingOpen] = useState(false);
+    const [selectedRoom, setSelectedRoom] = useState<number | null>(null);
+    const [selectedDate, setSelectedDate] = useState<string>(new Date().toLocaleDateString('en-CA').split('T')[0]);
+    const [allBookings, setAllBookings] = useState<any[]>([]);
+    const [allPendingBookings, setAllPendingBookings] = useState<any[]>([]);
 
-    const timeSlots = ["12pm-1pm", "1pm-2pm", "2pm-3pm", "3pm-4pm", "4pm-5pm"];
-    const [requests, setRequests] = useState([
-        { id: 1, studentName: "Alice Johnson", room: "Anna Rubin", time: "12pm-1pm", status: "Pending" },
-        { id: 2, studentName: "Bob Smith", room: "Sultran Center", time: "2pm-3pm", status: "Pending" },
-    ]);
+    const [newLocation, setNewLocation] = useState("");
+    const [newRoomName, setNewRoomName] = useState("");
+    const [newCapacity, setNewCapacity] = useState(0);
+    
 
-    const handleAccept = (id: number) => {
-        setRequests((prev) =>
-            prev.map((request) =>
-                request.id === id ? { ...request, status: "Accepted" } : request
-            )
-        );
+    type Booking = {
+        booking_id: number;
+        reserver_id: number;
+        reserver_type: string;
+        room_id: number;
+        date: string;
+        start_time: string;
+        end_time: string;
+        status: string;
     };
 
-    const handleReject = (id: number) => {
-        setIsSuggestingTime(true);
+    const [myBookings, setMyBookings] = useState<Booking[]>([]);
+
+    type StudyRoom = {
+        room_id: number;
+        location: string;
+        room_name: string;
+        capacity: number;
     };
+
+    const [studyRooms, setStudyRooms] = useState<StudyRoom[]>([]);
+
+    type Admin = {
+        admin_id: number,
+        email: string,
+        password: string,
+        full_name: string,
+    }
+
+    let currAdmin: Admin | null = null;
+
+    if (typeof window !== 'undefined') {
+        const adminData = localStorage.getItem('admin');
+        try {
+            currAdmin = adminData ? (JSON.parse(adminData) as Admin) : null;
+        } catch (error) {
+            console.error("Error parsing faculty data from localStorage", error);
+            window.location.href = '/admin';
+        }
+    
+        if (!currAdmin) {
+            window.location.href = '/admin';
+        }
+    }
+
+
+    const getStudyRooms = async () => {
+        try {
+            const res = await fetch('/api/getrooms', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+            });
+
+            if (res.ok) {
+                const {studyRooms} = await res.json();
+                setStudyRooms(studyRooms);
+                return;
+            } else {
+                return;
+            }
+        } catch (error) {
+            return;
+        }
+    }
+
+    if (studyRooms.length === 0) {
+        getStudyRooms();
+    }
+
+    const makeBooking = async () => {
+        try {
+            // Function to convert time to 24-hour format
+            const convertTo24HourFormat = (time : string) => {
+                const [hourMin, period] = time.split(/(am|pm)/);
+                let [hours, minutes] = hourMin.split(':').map((part) => parseInt(part, 10)); // Parse as integers
+            
+                // Ensure that hours and minutes are valid numbers
+                if (isNaN(hours)) hours = 0;
+                if (isNaN(minutes)) minutes = 0;
+            
+                // Convert to 24-hour format
+                if (period === 'pm' && hours !== 12) {
+                    hours += 12; // Convert PM to 24-hour format
+                }
+                if (period === 'am' && hours === 12) {
+                    hours = 0; // Convert midnight (12 AM) to 00:00
+                }
+            
+                // Return time as HH:MM:00 string (with leading zeros if necessary)
+                return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
+            };
+            
+            const startTime24 = convertTo24HourFormat(selectedTime);  // Convert start time
+            const startHour = parseInt(startTime24.split(':')[0], 10);
+            const endTime24 = `${(startHour + 1).toString().padStart(2, '0')}:00:00`;  // End time + 1 hour
+    
+            // Send request to backend with valid formatted date and time
+            const res = await fetch('/api/booking/addbooking', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    reserverId: currAdmin?.admin_id,
+                    reserverType: 'Admin',
+                    roomId: selectedRoom,
+                    date: selectedDate,
+                    startTime: convertTo24HourFormat(selectedTime),
+                    endTime: endTime24,
+                }),
+            });
+    
+            if (res.ok) {
+                alert("Booking successful!");
+            } else {
+                alert("Booking failed.");
+            }
+        } catch (error) {
+            console.error("Error making booking", error);
+            alert("Booking failed.");
+        }
+    };
+
+    const getBookingsForStudent = async () => {
+        try {
+            const res = await fetch('/api/booking/getbooking', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ reserverId: currAdmin?.admin_id, reserverType: 'Admin' }),
+            });
+
+            if (res.ok) {
+                const {bookings} = await res.json();
+                setMyBookings(bookings);
+                return;
+            } else {
+                return;
+            }
+        } catch (error) {
+            return;
+        }
+    }
+
+    if (!myBookings || myBookings === null) {
+        getBookingsForStudent();
+    }
+
+    useEffect(() => {
+        getBookingsForStudent();
+    }, []); 
+
+    const getBookingsByDate = async () => {
+        try {
+            const res = await fetch('/api/booking/getbooking', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ date: new Date(selectedDate).toLocaleDateString().split('T')[0] }),
+            });
+
+            if (res.ok) {
+                const {bookings} = await res.json();
+                setAllBookings(bookings);
+                return;
+            } else {
+                return;
+            }
+        } catch (error) {
+            return;
+        }
+    }
+
+    useEffect(() => {
+        getBookingsByDate();
+    }, [selectedDate]);
+
+    useEffect(() => {
+        getPendingBookings();
+    }, []);
+
+    const getPendingBookings = async () => {
+        try {
+            const res = await fetch('/api/booking/getpendingbookings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+            });
+
+            if (res.ok) {
+                const {bookings} = await res.json();
+                setAllPendingBookings(bookings);
+                return;
+            } else {
+                return;
+            }
+        } catch (error) {
+            return;
+        }
+    }
+
+    const handleButtonClick = async () => {
+        await makeBooking();
+        setSelectedTime("");
+        await getBookingsByDate();
+        await getBookingsForStudent();
+    };
+
+    const updateBookingStatus = async (bookingId: number, status: string) => {
+        try {
+            const res = await fetch('/api/booking/updatebooking', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ bookingId: bookingId, newStatus: status }),
+            });
+
+            if (res.ok) {
+                return;
+            } else {
+                return;
+            }
+        } catch (error) {
+            return;
+        }
+    };
+
+    const addStudyRoom = async () => { 
+        try {
+            const res = await fetch('/api/addrooms', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    location: newLocation,
+                    room_name: newRoomName,
+                    capacity: newCapacity,
+                }),
+            });
+
+            if (res.ok) {
+                alert("Room added successfully!");
+            } else {
+                alert("Failed to add room.");
+            }
+        } catch (error) {
+            console.error("Error adding room", error);
+            alert("Failed to add room.");
+        }
+    }
 
     return (
         <div className="flex flex-col min-h-screen bg-gradient-to-r from-yellow-100 to-orange-200 text-black">
             {/* Logo and Header */}
             <div className="flex justify-between items-center p-5">
                 <button onClick={() => (window.location.href = '/')}>
-                    <Image src="/roomylogomain.png" alt="Roomy Logo" width={150} height={50} />
+                    <Image src="/roomylogo.png" alt="Roomy Logo" width={150} height={50} />
                 </button>
                 <button
                     className="bg-yellow-400 text-black px-4 py-2 rounded-lg hover:bg-amber-200"
@@ -43,58 +280,255 @@ const FacultyDashboard: React.FC = () => {
 
             {/* Main Content */}
             <div className="flex flex-col items-center px-5">
-                <h1 className="text-4xl font-extrabold py-5">Faculty Dashboard</h1>
-
-                {/* Incoming Requests Section */}
+                <h1 className="text-4xl font-extrabold py-5">Admin Control Panel</h1>
+                <h1 className="text-3xl font-extrabold py-5">{currAdmin?.full_name}</h1>
                 <div className="w-full max-w-4xl mt-10 bg-white p-5 rounded-lg shadow-lg">
-                    <h2 className="text-2xl font-bold mb-4">Incoming Requests</h2>
+                    <h2 className="text-2xl font-bold mb-4">Approve Bookings</h2>
                     <ul>
-                        {requests.map((request) => (
-                            <li
-                                key={request.id}
-                                className={`flex justify-between items-center p-3 border-b border-gray-300 ${
-                                    request.status === "Accepted"
-                                        ? "bg-green-100"
-                                        : request.status === "Rejected"
-                                        ? "bg-red-100"
-                                        : ""
-                                }`}
-                            >
-                                <div>
-                                    <p className="font-bold">{request.studentName}</p>
-                                    <p>{`${request.room} - ${request.time}`}</p>
-                                </div>
-                                {request.status === "Pending" ? (
-                                    <div className="flex gap-3">
+                        {allPendingBookings && allPendingBookings
+                            .filter(booking => new Date(booking.date) >= new Date(new Date().toLocaleDateString('en-CA')))
+                            .map((booking) => (
+                                <li
+                                    key={booking.booking_id}
+                                    className="flex justify-between items-center p-3 border-b border-gray-300"
+                                >
+                                    <div>
+                                        <p className="font-bold">{booking.room_id}</p>
+                                        <p>{(booking.date).split('T')[0]} {booking.start_time} - {booking.end_time}</p>
+                                    </div>
+                                    <div className="flex space-x-2">
                                         <button
-                                            className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-400"
-                                            onClick={() => handleAccept(request.id)}
+                                            className="bg-green-500 text-white px-3 py-1 rounded-full hover:bg-green-400"
+                                            onClick={async () => {
+                                                await updateBookingStatus(booking.booking_id, 'Approved');
+                                                await getPendingBookings();
+                                            }}
                                         >
-                                            Accept
+                                            Approve
                                         </button>
                                         <button
-                                            className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-400"
-                                            onClick={() => handleReject(request.id)}
+                                            className="bg-red-500 text-white px-3 py-1 rounded-full hover:bg-red-400"
+                                            onClick={async () => {
+                                                await updateBookingStatus(booking.booking_id, 'Declined');
+                                                await getPendingBookings();
+                                            }}
                                         >
-                                            Reject
+                                            Decline
                                         </button>
                                     </div>
-                                ) : (
-                                    <span
-                                        className={`px-3 py-1 rounded-full text-white ${
-                                            request.status === "Accepted"
-                                                ? "bg-green-500"
-                                                : "bg-red-500"
-                                        }`}
-                                    >
-                                        {request.status}
-                                    </span>
-                                )}
-                            </li>
-                        ))}
+                                </li>
+                            ))}
                     </ul>
                 </div>
-            </div>
+
+
+
+
+                {/* My Bookings Section */}
+                <div className="w-full max-w-4xl mt-10 bg-white p-5 rounded-lg shadow-lg">
+                    <h2 className="text-2xl font-bold mb-4">My Bookings</h2>
+                    <ul>
+                        {myBookings && myBookings
+                            .filter(booking => new Date(booking.date) >= new Date(new Date().toLocaleDateString('en-CA')))
+                            .map((booking) => (
+                                <li
+                                    key={booking.booking_id}
+                                    className="flex justify-between items-center p-3 border-b border-gray-300"
+                                >
+                                    <div>
+                                        <p className="font-bold">{booking.room_id}</p>
+                                        <p>{(booking.date).split('T')[0]} {booking.start_time} - {booking.end_time}</p>
+                                    </div>
+                                    <span
+                                        className={`px-3 py-1 rounded-full text-white ${
+                                            booking.status === "Approved"
+                                                ? "bg-green-500"
+                                                : booking.status === "Declined"
+                                                ? "bg-red-500"
+                                                : "bg-yellow-500"
+                                        }`}
+                                    >
+                                        {booking.status}
+                                    </span>
+                                </li>
+                            ))}
+                    </ul>
+                </div>
+
+                <div className="w-full max-w-4xl mt-10 bg-white p-5 rounded-lg shadow-lg">
+                    <h2 className="text-2xl font-bold mb-4">Add New Room</h2>
+                    <div className="mb-4">
+                        <label className="block text-lg font-bold mb-2">Select Location:</label>
+                        <select
+                            className="w-full p-2 border border-gray-300 rounded-lg"
+                            value={newLocation}
+                            onChange={(e) => setNewLocation(e.target.value)}
+                        >
+                            <option value="">Select a location</option>
+                            {Array.from(new Set(studyRooms.map(room => room.location))).sort().map((location: string) => (
+                                <option key={location} value={location}>
+                                    {location}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="mb-4">
+                        <label className="block text-lg font-bold mb-2">Room Name:</label>
+                        <input
+                            type="text"
+                            className="w-full p-2 border border-gray-300 rounded-lg"
+                            value={newRoomName}
+                            onChange={(e) => setNewRoomName(e.target.value)}
+                        />
+                    </div>
+                    <div className="mb-4">
+                        <label className="block text-lg font-bold mb-2">Capacity:</label>
+                        <input
+                            type="number"
+                            className="w-full p-2 border border-gray-300 rounded-lg"
+                            value={newCapacity}
+                            onChange={(e) => setNewCapacity(parseInt(e.target.value))}
+                        />
+                    </div>
+                    <button
+                        className="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-400"
+                        onClick={async () => {
+                            await addStudyRoom();
+                            setNewLocation("");
+                            setNewRoomName("");
+                            setNewCapacity(0);
+                            await getStudyRooms();
+                        }}
+                    >
+                        Add Room
+                    </button>
+                </div>
+
+                {/* Different Types of Study Rooms */}
+                {studyRooms && (
+                    <div className="w-full max-w-4xl mt-10 bg-white p-5 rounded-lg shadow-lg">
+                        {selectedRoom && selectedTime && (
+                            <div className="flex justify-end">
+                                <button
+                                    className="bg-blue-500 text-white p-2 rounded-full hover:bg-blue-400 m-4"
+                                    onClick={() => {
+                                        handleButtonClick();
+                                    }}
+                                >Checkout</button>
+                            </div>
+                        )}
+                        <h2 className="text-2xl font-bold mb-4 text-center">Available Rooms</h2>
+                        <select
+                            className="w-full p-2 border border-gray-300 rounded-lg mb-4"
+                            value={selectedBuilding}
+                            onChange={(e) => setSelectedBuilding(e.target.value)}
+                        >
+                            <option value="">Select a location</option>
+                            {Array.from(new Set(studyRooms.map(room => room.location))).sort().map((location: string) => (
+                                <option key={location} value={location}>
+                                    {location}
+                                </option>
+                            ))}
+                        </select>
+                        <input
+                            type="date"
+                            className="w-full p-2 border border-gray-300 rounded-lg mb-4"
+                            value={selectedDate || new Date().toLocaleDateString('en-CA')}
+                            onChange={(e) => {
+                                setSelectedDate(e.target.value);
+                            }}
+                            min={new Date().toLocaleDateString('en-CA')}
+                        />
+                        <div className="mb-6">
+                            <ul>
+                                {Array.from(new Set(studyRooms.map(room => room.location))).sort().map((location: string) => (
+                                    (!selectedBuilding || location === selectedBuilding) && (
+                                        <div key={location}>
+                                            <h3 className="text-lg font-bold mt-4">{location}</h3>
+                                            {studyRooms
+                                                .filter((room) => !selectedBuilding || room.location === selectedBuilding)
+                                                .filter((room) => room.location === location)
+                                                .map((room) => (
+                                                    <li
+                                                        key={room.room_id}
+                                                        className="flex justify-between items-center p-3 border-b border-gray-300 hover:bg-gray-200"
+                                                    >
+                                                        <div>
+                                                            <p className="font-bold">{room.room_name}</p>
+                                                            <p>{room.capacity} people</p>
+                                                        </div>
+
+                                                        <div className="w-full max-w-4xl mt-10 p-5">
+                                                            <div className="flex overflow-x-auto space-x-2">
+                                                                {Array.from({ length: 12 }, (_, i) => {
+                                                                const hour = 8 + i;
+                                                                const time = `${hour % 12 || 12}${hour < 12 ? 'am' : 'pm'}`;
+
+                                                                const convertTo24HourFormat = (time : string) => {
+                                                                    const [hourMin, period] = time.split(/(am|pm)/);
+                                                                    let [hours, minutes] = hourMin.split(':').map((part) => parseInt(part, 10)); // Parse as integers
+                                                                
+                                                                    // Ensure that hours and minutes are valid numbers
+                                                                    if (isNaN(hours)) hours = -1;
+                                                                    if (isNaN(minutes)) minutes = 0;
+
+                                                                    // Convert to 24-hour format
+                                                                    if (period === 'pm' && hours !== 12) {
+                                                                        hours += 12; // Convert PM to 24-hour format
+                                                                    }
+                                                                    if (period === 'am' && hours === 12) {
+                                                                        hours = 0; // Convert midnight (12 AM) to 00:00
+                                                                    }
+                                                        
+
+                                                                
+                                                                    // Return time as HH:MM:00 string (with leading zeros if necessary)
+                                                                    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
+                                                                };
+
+                                                                // Check if the current time slot is already taken
+                                                                const isTaken = allBookings && allBookings.some(
+                                                                    (booking) =>
+                                                                    booking.status === 'Approved' &&
+                                                                    booking.room_id === room.room_id &&
+                                                                    booking.date.split('T')[0] === (selectedDate).split('T')[0] &&
+                                                                    booking.start_time === convertTo24HourFormat(time)
+                                                                );
+
+                                                                return (
+                                                                    <div
+                                                                        key={i}
+                                                                        className={`p-1 rounded-lg text-center text-sm min-w-[50px] cursor-pointer ${
+                                                                            isTaken
+                                                                            ? 'bg-red-500 text-white cursor-not-allowed' // Red if taken and not clickable
+                                                                            : selectedRoom === room.room_id && selectedTime === time
+                                                                            ? 'bg-yellow-500' // Highlight if selected
+                                                                            : 'bg-green-500 text-white hover:bg-gray-300'
+                                                                        }`}
+                                                                        onClick={() => {
+                                                                            if (!isTaken) {
+                                                                            setSelectedTime(time);
+                                                                            setSelectedBuilding(room.location);
+                                                                            setSelectedRoom(room.room_id);
+                                                                            }
+                                                                        }}
+                                                                    >
+                                                                        {time}
+                                                                    </div>
+                                                                );
+                                                                })}
+                                                            </div>
+                                                            </div>
+                                                    </li>
+                                                ))}
+                                        </div>
+                                    )
+                                ))}
+                            </ul>
+                        </div>
+                    </div>
+                )}      
+
 
             {/* Sidebar for Profile Management */}
             {sidebarOpen && (
@@ -113,48 +547,58 @@ const FacultyDashboard: React.FC = () => {
                             height={100}
                             className="rounded-full"
                         />
-                        <h2 className="text-xl font-bold mt-3">Faculty Name</h2>
-                        <p>Faculty ID: 12345</p>
+                        {/* Display dynamic user details */}
+                        <h2 className="text-xl font-bold mt-3">
+                            {currAdmin?.full_name || "Guest"}
+                        </h2>
+                        <p>Student ID: {currAdmin?.admin_id || "N/A"}</p>
                     </div>
                 </div>
             )}
 
-            {/* Suggest Alternative Time Slot */}
-            {isSuggestingTime && (
+        
+
+            {/* Booking Popup */}
+            {isBookingOpen && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
                     <div className="bg-white p-5 rounded-lg shadow-lg w-full max-w-md">
-                        <h2 className="text-2xl font-bold mb-4">Suggest Alternative Time Slot</h2>
+                        <h2 className="text-2xl font-bold mb-4">Reserve a Room</h2>
 
-                        <label className="block text-lg font-bold mb-2">Choose a Time Slot:</label>
+                        {/* Building Selection */}
+                        <label className="block text-lg font-bold mb-2">Choose a Building:</label>
                         <select
                             className="w-full p-2 border border-gray-300 rounded-lg mb-4"
-                            value={selectedTime}
-                            onChange={(e) => setSelectedTime(e.target.value)}
+                            value={selectedBuilding}
+                            onChange={(e) => setSelectedBuilding(e.target.value)}
                         >
-                            <option value="">Select a time slot</option>
-                            {timeSlots.map((slot) => (
-                                <option key={slot} value={slot}>
-                                    {slot}
+                            <option value="">Select a building</option>
+                            {Array.from(new Set(studyRooms.map(room => room.location))).sort().map((building: string) => (
+                                <option key={building} value={building}>
+                                    {building}
                                 </option>
                             ))}
                         </select>
 
+                        {/* Confirm Button */}
                         <button
                             className="w-full bg-green-500 text-white py-2 rounded-lg hover:bg-green-400"
                             onClick={() => {
                                 alert(
-                                    `Alternative time slot suggested: ${selectedTime}. Notification will be sent to the student.`
+                                    `You have requested to book ${selectedBuilding} from ${selectedTime}.`
                                 );
-                                setIsSuggestingTime(false);
+                                setIsBookingOpen(false);
                             }}
                         >
-                            Confirm Time Slot
+                            Confirm Booking
                         </button>
                     </div>
                 </div>
             )}
         </div>
+
+        <div className='my-10'>&nbsp;</div>
+    </div>
     );
 };
 
-export default FacultyDashboard;
+export default AdminDashboard;

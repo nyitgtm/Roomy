@@ -37,10 +37,9 @@ export async function POST(req, res) {
         }
 
         const admin = rows[0];
-        console.log('Admin found:', admin);
 
         // Return the authenticated user
-        return new Response(JSON.stringify({ message: 'Successfully logged in' }), {
+        return new Response(JSON.stringify({ message: 'Successfully logged in', admin: admin }), {
             status: 200,
             admin
         });

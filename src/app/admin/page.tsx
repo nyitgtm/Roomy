@@ -7,6 +7,14 @@ const AdminLoginPage: React.FC = () => {
     const [adminId, setAdminId] = React.useState('');
     const [password, setPassword] = React.useState('');
 
+
+    type Admin = {
+        admin_id: number,
+        email: string,
+        password: string,
+        full_name: string,
+    }
+
     const handleLogin = async () => {
         if (!adminId || !password) {
             alert('Please fill in all fields');
@@ -21,6 +29,9 @@ const AdminLoginPage: React.FC = () => {
             });
 
             if (res.ok) {
+                const {admin} = await res.json();
+                localStorage.setItem('admin', JSON.stringify(admin as Admin));
+                
                 window.location.href = '/admin/dashboard';
             } else {
                 const data = await res.json();
