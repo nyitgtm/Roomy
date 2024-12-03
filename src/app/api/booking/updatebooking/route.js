@@ -1,6 +1,6 @@
 import mysql from 'mysql2/promise';
 
-export async function POST(req, res) {
+export async function POST(req) {
     try {
         // Parse request body
         const { bookingId, newStatus } = await req.json();

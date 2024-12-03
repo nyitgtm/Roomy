@@ -3,9 +3,9 @@ import mysql from 'mysql2/promise';
 export async function POST(req, res) {
     try {
         // Parse request body
-        const { studentId } = await req.json();
+        const { facultyId } = await req.json();
 
-        if (!studentId) {
+        if (!facultyId) {
             return new Response(JSON.stringify({ message: 'Invalid Data' }), {
                 status: 400,
             });
@@ -19,25 +19,23 @@ export async function POST(req, res) {
             database: 'Roomy',
         });
 
-        console.log('Connected to MySQL');
-
         // Get the student by ID from the database
-        const [student] = await connection.execute(
-            'SELECT * FROM Students WHERE student_id = ?',
-            [studentId]
+        const [faculty] = await connection.execute(
+            'SELECT * FROM Faculty WHERE faculty_id = ?',
+            [facultyId]
         );
 
         // Close the connection
         await connection.end();
 
-        if (student.length === 0) {
-            return new Response(JSON.stringify({ message: 'Student Not Found' }), {
+        if (faculty.length === 0) {
+            return new Response(JSON.stringify({ message: 'Faculty Not Found' }), {
                 status: 404,
             });
         }
 
         // Return success response with student data
-        return new Response(JSON.stringify({ message: 'Succesfully logged in', retrivedStudent: student }), {
+        return new Response(JSON.stringify({ message: 'Succesfully logged in', faculty: faculty }), {
             status: 200
         });
     } catch (error) {

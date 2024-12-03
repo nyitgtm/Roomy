@@ -44,6 +44,9 @@ const StudentDashboard: React.FC = () => {
         is_banned: boolean;
     };
 
+    const [newEmail, setNewEmail] = useState<string>("");
+    const [newPassword, setNewPassword] = useState<string>("");
+
     let currStudent: Student | null = null;
     if (typeof window !== 'undefined') {
         const studentData = localStorage.getItem('student');
@@ -68,11 +71,12 @@ const StudentDashboard: React.FC = () => {
             const res = await fetch('/api/student/getstudent', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ studentId: currStudent.student_id }),
+                body: JSON.stringify({ studentId: currStudent?.student_id }),
             });
 
             if (res.ok) {
-                const {student} = await res.json();
+                const {retrivedStudent} = await res.json();
+                const updatedStudent = retrivedStudent[0];
                 type Student = {
                     student_id: number;
                     email: string;
@@ -81,7 +85,10 @@ const StudentDashboard: React.FC = () => {
                     is_banned: boolean;
                 };
 
-                localStorage.setItem('student', JSON.stringify(student as Student));
+                console.log("Student data refreshed:", updatedStudent);
+
+                localStorage.setItem('student', JSON.stringify(updatedStudent as Student));
+                window.location.reload();
                 return;
             } else {
                 return;
@@ -186,7 +193,7 @@ const StudentDashboard: React.FC = () => {
         }
     }
 
-    if (!myBookings || myBookings.length === 0) {
+    if (!myBookings) {
         getBookingsForStudent();
     }
 
@@ -222,6 +229,55 @@ const StudentDashboard: React.FC = () => {
         await getBookingsForStudent();
     };
 
+    const changeEmailPassword = async () => {
+        if (!currStudent) {
+            alert("No student data found.");
+            return;
+        }
+
+        try {
+            const res = await fetch('/api/student/updatestudent', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    studentId: currStudent.student_id,
+                    email: newEmail,
+                    password: newPassword,
+                })
+            });
+
+            if (res.ok) {
+                const { student } = await res.json();
+                refreshStudent();
+            } else {
+                return;
+            }
+        } catch (error) {
+            console.error("Error updating profile", error);
+        }
+    };
+
+    const cancelBooking = async (bookingId: number) => {
+        try {
+            const res = await fetch('/api/booking/updatebooking', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ bookingId: bookingId, newStatus: "Declined" }),
+            });
+
+            if (res.ok) {
+                await getBookingsForStudent();
+                await getBookingsByDate();
+            } else {
+                alert("Booking cancellation failed.");
+            }
+        } catch (error) {
+            console.error("Error cancelling booking", error);
+            alert("Booking cancellation failed.");
+        }
+    }
+
+
     return (
         <div className="flex flex-col min-h-screen bg-gradient-to-r from-yellow-100 to-orange-200 text-black">
             {/* Logo and Header */}
@@ -255,6 +311,16 @@ const StudentDashboard: React.FC = () => {
                                     <div>
                                         <span className='font-bold'>{studyRooms.find(room => room.room_id === booking.room_id)?.room_name}</span>
                                         <p>{(booking.date).split('T')[0]} {booking.start_time} - {booking.end_time}</p>
+                                    </div>
+                                    <div>
+                                        {booking.status !== "Declined" && (
+                                            <button
+                                                className="bg-red-500 text-white p-2 rounded-lg hover:bg-red-400"
+                                                onClick={async () => await cancelBooking(booking.booking_id)}
+                                            >
+                                                Cancel
+                                            </button>
+                                        )}
                                     </div>
                                     <span
                                         className={`px-3 py-1 rounded-full text-white ${
@@ -396,9 +462,10 @@ const StudentDashboard: React.FC = () => {
                 )}      
 
 
-            {/* Sidebar for Profile Management */}
-            {sidebarOpen && (
-                <div className="fixed top-0 right-0 w-64 h-full bg-white shadow-lg z-50 p-5">
+
+                {/* Sidebar for Profile Management */}
+                {sidebarOpen && (
+                <div className="fixed top-0 right-0 w-82 h-full bg-white shadow-lg z-50 p-5 overflow-y-auto">
                     <button
                         className="text-black font-bold text-lg mb-5"
                         onClick={() => setSidebarOpen(false)}
@@ -407,17 +474,86 @@ const StudentDashboard: React.FC = () => {
                     </button>
                     <div className="flex flex-col items-center">
                         <Image
-                            src="/profile-placeholder.png"
+                            src="/roomylogo.png"
                             alt="Profile"
-                            width={100}
+                            width={200}
                             height={100}
-                            className="rounded-full"
                         />
                         {/* Display dynamic user details */}
                         <h2 className="text-xl font-bold mt-3">
                             {currStudent?.full_name || "Guest"}
                         </h2>
-                        <p>Student ID: {currStudent?.student_id || "N/A"}</p>
+                        <p>ID: {currStudent?.student_id || "N/A"}</p>
+                        <p>Email: {currStudent?.email || "N/A"}</p>
+
+                        {/* Logout Button */}
+                        <button
+                            className="bg-red-500 text-white px-4 py-2 rounded-lg mt-5"
+                            onClick={() => {
+                                localStorage.removeItem('student');
+                                window.location.href = '/student';
+                            }}
+                        > Logout </button>
+
+                        {/* Update Password/Email */}
+                        <div className="w-full max-w-4xl mt-10 bg-white p-5 rounded-lg shadow-lg">
+                            <h2 className="text-2xl font-bold mb-4">Update Profile</h2>
+                            <div className="mb-4">
+                                <label className="block text-lg font-bold mb-2">Email:</label>
+                                <input
+                                    type="email"
+                                    className="w-full p-2 border border-gray-300 rounded-lg"
+                                    placeholder="Enter new email"
+                                    onChange={(e) => setNewEmail(e.target.value)}
+                                />
+                            </div>
+                            <div className="mb-4">
+                                <label className="block text-lg font-bold mb-2">Password:</label>
+                                <input
+                                    type="password"
+                                    className="w-full p-2 border border-gray-300 rounded-lg"
+                                    placeholder="Enter new password"
+                                    onChange={(e) => {
+                                        setNewPassword(e.target.value);
+                                    }}
+                                />
+                            </div>
+                            <button 
+                                className="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-400"
+                                onClick={() => changeEmailPassword()}
+                            >
+                                Update
+                            </button>
+                        </div>
+
+
+                        <p className='mt-10 text-lg font-bold'>Old Bookings</p>
+                        <ul>
+                            {myBookings && myBookings
+                                .filter(booking => new Date(booking.date) < new Date(new Date().toLocaleDateString('en-CA')))
+                                .map((booking) => (
+                                    <li
+                                        key={booking.booking_id}
+                                        className="flex justify-between items-center p-3 border-b border-gray-300"
+                                    >
+                                        <div>
+                                            <span className='font-bold'>{studyRooms.find(room => room.room_id === booking.room_id)?.room_name}</span>
+                                            <p>{(booking.date).split('T')[0]} {booking.start_time} - {booking.end_time}</p>
+                                        </div>
+                                        <span
+                                            className={`px-3 py-1 rounded-full text-white ${
+                                                booking.status === "Approved"
+                                                    ? "bg-green-500"
+                                                    : booking.status === "Declined"
+                                                    ? "bg-red-500"
+                                                    : "bg-yellow-500"
+                                            }`}
+                                        >
+                                            {booking.status}
+                                        </span>
+                                    </li>
+                                ))}
+                        </ul>
                     </div>
                 </div>
             )}
