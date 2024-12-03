@@ -29,14 +29,14 @@ export async function POST(req, res) {
 
         // Check if there's an existing booking for the same room and time
         const [conflictingBookings] = await connection.execute(
-            'SELECT * FROM Bookings WHERE room_id = ? AND date = ? AND ((start_time < ? AND end_time > ?) OR (start_time < ? AND end_time > ?))',
+            'SELECT * FROM Bookings WHERE room_id = ? AND date = ? AND status = "APPROVED" AND ((start_time < ? AND end_time > ?) OR (start_time < ? AND end_time > ?))',
             [roomId, date, endTime, startTime, startTime, endTime]
         );
 
         let status = 'Pending';
 
         // Logic for status determination
-        if (existingBookings.length === 0) {
+        if ((existingBookings.length === 0 || reserverType != 'Student') && conflictingBookings.length === 0) {
             // If no approved booking exists for the day, approve this one
             status = 'Approved';
         }

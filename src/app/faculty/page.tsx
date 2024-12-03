@@ -24,6 +24,16 @@ const FacultyLoginPage: React.FC = () => {
             });
 
             if (res.ok) {
+                type Faculty = {
+                    faculty_id: number;
+                    email: string;
+                    password: string;
+                    full_name: string;
+                }
+                const {faculty} = await res.json();
+                console.log(faculty);
+                localStorage.setItem('faculty', JSON.stringify(faculty as Faculty));
+
                 window.location.href = '/faculty/dashboard';
             } else {
                 const data = await res.json();

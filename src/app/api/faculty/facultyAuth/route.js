@@ -38,9 +38,8 @@ export async function POST(req, res) {
         console.log('Faculty found:', faculty);
 
         // Return the authenticated user
-        return new Response(JSON.stringify({ message: 'Successfully logged in' }), {
-            status: 200,
-            faculty
+        return new Response(JSON.stringify({ message: 'Successfully logged in', faculty: faculty }), {
+            status: 200
         });
     } catch (error) {
         console.error('Error occurred:', error);

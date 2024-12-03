@@ -2,8 +2,10 @@
 
 import React, { use, useState, useEffect } from 'react';
 import Image from "next/image";
+import { useRouter } from 'next/navigation';
 
 const StudentDashboard: React.FC = () => {
+    const router = useRouter();
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [selectedBuilding, setSelectedBuilding] = useState("");
     const [selectedTime, setSelectedTime] = useState("");
@@ -210,7 +212,15 @@ const StudentDashboard: React.FC = () => {
 
     useEffect(() => {
         getBookingsByDate();
+        getBookingsForStudent();
     }, [selectedDate]);
+
+    const handleButtonClick = async () => {
+        await makeBooking();
+        setSelectedTime("");
+        await getBookingsByDate();
+        await getBookingsForStudent();
+    };
 
     return (
         <div className="flex flex-col min-h-screen bg-gradient-to-r from-yellow-100 to-orange-200 text-black">
@@ -269,9 +279,8 @@ const StudentDashboard: React.FC = () => {
                             <div className="flex justify-end">
                                 <button
                                     className="bg-blue-500 text-white p-2 rounded-full hover:bg-blue-400 m-4"
-                                    onClick={() => {
-                                        const date = new Date(); // You can customize the date as needed
-                                        makeBooking();
+                                    onClick={async () => {
+                                        await handleButtonClick();
                                     }}
                                 >Checkout</button>
                             </div>
@@ -328,7 +337,7 @@ const StudentDashboard: React.FC = () => {
                                                                     let [hours, minutes] = hourMin.split(':').map((part) => parseInt(part, 10)); // Parse as integers
                                                                 
                                                                     // Ensure that hours and minutes are valid numbers
-                                                                    if (isNaN(hours)) hours = 0;
+                                                                    if (isNaN(hours)) hours = -1;
                                                                     if (isNaN(minutes)) minutes = 0;
                                                                 
                                                                     // Convert to 24-hour format
@@ -338,9 +347,6 @@ const StudentDashboard: React.FC = () => {
                                                                     if (period === 'am' && hours === 12) {
                                                                         hours = 0; // Convert midnight (12 AM) to 00:00
                                                                     }
-                                                                
-                                                                    // Subtract 1 hour
-                                                                    hours = (hours + 1 + 24) % 24;
                                                                 
                                                                     // Return time as HH:MM:00 string (with leading zeros if necessary)
                                                                     return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
