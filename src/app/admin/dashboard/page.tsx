@@ -13,6 +13,7 @@ const AdminDashboard: React.FC = () => {
     const [selectedDate, setSelectedDate] = useState<string>(new Date().toLocaleDateString('en-CA').split('T')[0]);
     const [allBookings, setAllBookings] = useState<any[]>([]);
     const [allPendingBookings, setAllPendingBookings] = useState<any[]>([]);
+    const [allStudents, setAllStudents] = useState<any[]>([]);
 
     const [newLocation, setNewLocation] = useState("");
     const [newRoomName, setNewRoomName] = useState("");
@@ -47,6 +48,13 @@ const AdminDashboard: React.FC = () => {
         password: string,
         full_name: string,
     }
+    type Student = {
+        student_id: number;
+        email: string;
+        password: string;
+        full_name: string;
+        is_banned: boolean;
+    };
 
     let currAdmin: Admin | null = null;
 
@@ -263,6 +271,46 @@ const AdminDashboard: React.FC = () => {
         }
     }
 
+    const getAllStudents = async () => {
+        try {
+            const res = await fetch('/api/student/getallstudents', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+            });
+
+            if (res.ok) {
+                const {students} = await res.json();
+                setAllStudents(students);
+            } else {
+                return;
+            }
+        } catch (error) {
+            setAllStudents([]);
+        }
+    }
+
+    if (allStudents.length === 0) {
+        getAllStudents();
+    }
+
+    const changeStudentStatus = async (studentId: number, isBanned: number) => {
+        try {
+            const res = await fetch('/api/student/banstudent', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ studentId: studentId, newStatus: isBanned }),
+            });
+
+            if (res.ok) {
+                await getAllStudents();
+            } else {
+                return;
+            }
+        } catch (error) {
+            return;
+        }
+    }
+
     return (
         <div className="flex flex-col min-h-screen bg-gradient-to-r from-yellow-100 to-orange-200 text-black">
             {/* Logo and Header */}
@@ -318,6 +366,35 @@ const AdminDashboard: React.FC = () => {
                                     </div>
                                 </li>
                             ))}
+                    </ul>
+                </div>
+
+
+                {/* Student Modifying Area */}
+                <div className="w-full max-w-4xl mt-10 bg-white p-5 rounded-lg shadow-lg">
+                    <h2 className="text-2xl font-bold mb-4">Manage Students</h2>
+                    <ul>
+                        {allStudents && allStudents.map((student) => (
+                            <li
+                                key={student.student_id}
+                                className="flex justify-between items-center p-3 border-b border-gray-300"
+                            >
+                                <div>
+                                    <p className="font-bold">{student.full_name}</p>
+                                    <p>{student.email}</p>
+                                </div>
+                                <div className="flex space-x-2">
+                                    <button
+                                        className="bg-red-500 text-white px-3 py-1 rounded-full hover:bg-red-400"
+                                        onClick={async () => {
+                                            await changeStudentStatus(student.student_id, student.is_banned ? 0 : 1);
+                                        }}
+                                    >
+                                        {student.is_banned ? "Unban" : "Ban"}
+                                    </button>
+                                </div>
+                            </li>
+                        ))}
                     </ul>
                 </div>
 
