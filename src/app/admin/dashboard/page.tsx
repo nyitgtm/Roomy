@@ -388,6 +388,34 @@ const AdminDashboard: React.FC = () => {
         }
     }
 
+    const [facultyIdCreated, setFacultyIdCreated] = useState<number | null>(null);
+    const [faciltyEmailCreated, setFacultyEmailCreated] = useState<string>("");
+    const [facultyPasswordCreated, setFacultyPasswordCreated] = useState<string>("");
+    const [facultyFullNameCreated, setFacultyFullNameCreated] = useState<string>("");
+
+    const addFaculty = async () => {
+        try {
+            const res = await fetch('/api/faculty/createfaculty', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: faciltyEmailCreated,
+                    password: facultyPasswordCreated,
+                    full_name: facultyFullNameCreated,
+                }),
+            });
+
+            if (res.ok) {
+                alert("Faculty added successfully!");
+            } else {
+                alert("Failed to add faculty.");
+            }
+        } catch (error) {
+            console.error("Error adding faculty", error);
+            alert("Failed to add faculty.");
+        }
+    }
+
     return (
         <div className="flex flex-col min-h-screen bg-gradient-to-r from-yellow-100 to-orange-200 text-black">
             {/* Logo and Header */}
@@ -444,6 +472,52 @@ const AdminDashboard: React.FC = () => {
                                 </li>
                             ))}
                     </ul>
+                </div>
+
+                {/* Faculty Modifying Area */}
+                <div className="w-full max-w-4xl mt-10 bg-white p-5 rounded-lg shadow-lg">
+                    <h2 className="text-2xl font-bold mb-4">Manage Faculty</h2>
+                    <div className="mb-4">
+                        <label className="block text-lg font-bold mb-2">Full Name:</label>
+                        <input
+                            type="text"
+                            className="w-full p-2 border border-gray-300 rounded-lg"
+                            value={facultyFullNameCreated}
+                            onChange={(e) => setFacultyFullNameCreated(e.target.value)}
+                        />
+                    </div>
+                    <div className="mb-4">
+                        <label className="block text-lg font-bold mb-2">Email:</label>
+                        <input
+                            type="email"
+                            className="w-full p-2 border border-gray-300 rounded-lg"
+                            value={faciltyEmailCreated}
+                            onChange={(e) => setFacultyEmailCreated(e.target.value)}
+                        />
+                    </div>
+                    <div className="mb-4">
+                        <label className="block text-lg font-bold mb-2">Password:</label>
+                        <input
+                            type="password"
+                            className="w-full p-2 border border-gray-300 rounded-lg"
+                            value={facultyPasswordCreated}
+                            onChange={(e) => setFacultyPasswordCreated(e.target.value)}
+                        />
+                    </div>
+                    <button
+                        className={`w-full py-2 rounded-lg ${facultyFullNameCreated && faciltyEmailCreated && facultyPasswordCreated ? 'bg-blue-500 text-white hover:bg-blue-400' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
+                        onClick={async () => {
+                            if (facultyFullNameCreated && faciltyEmailCreated && facultyPasswordCreated) {
+                                await addFaculty();
+                                setFacultyFullNameCreated("");
+                                setFacultyEmailCreated("");
+                                setFacultyPasswordCreated("");
+                            }
+                        }}
+                        disabled={!facultyFullNameCreated || !faciltyEmailCreated || !facultyPasswordCreated}
+                    >
+                        Add Faculty
+                    </button>
                 </div>
 
 
