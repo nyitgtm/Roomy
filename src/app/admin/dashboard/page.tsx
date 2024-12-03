@@ -311,6 +311,26 @@ const AdminDashboard: React.FC = () => {
         }
     }
 
+    const removeRoom = async (roomId: number) => {
+        try {
+            const res = await fetch('/api/removerooms', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ room_id: roomId }),
+            });
+
+            if (res.ok) {
+                alert("Room removed successfully!");
+                await getStudyRooms();
+            } else {
+                alert("Failed to remove room.");
+            }
+        } catch (error) {
+            console.error("Error removing room", error);
+            alert("Failed to remove room.");
+        }
+    }
+
     return (
         <div className="flex flex-col min-h-screen bg-gradient-to-r from-yellow-100 to-orange-200 text-black">
             {/* Logo and Header */}
@@ -533,6 +553,7 @@ const AdminDashboard: React.FC = () => {
                                                         <div>
                                                             <p className="font-bold">{room.room_name}</p>
                                                             <p>{room.capacity} people</p>
+                                                            <button className="bg-red-500 text-white px-3 py-1 rounded-full hover:bg-red-400" onClick={() => {removeRoom(room.room_id); getStudyRooms()}}>Remove Room</button>
                                                         </div>
 
                                                         <div className="w-full max-w-4xl mt-10 p-5">
