@@ -2,6 +2,7 @@
 
 import React, { use, useState, useEffect } from 'react';
 import Image from "next/image";
+import { useRouter } from 'next/navigation';
 
 const FacultyDashboard: React.FC = () => {
     const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -11,6 +12,7 @@ const FacultyDashboard: React.FC = () => {
     const [selectedRoom, setSelectedRoom] = useState<number | null>(null);
     const [selectedDate, setSelectedDate] = useState<string>(new Date().toLocaleDateString('en-CA').split('T')[0]);
     const [allBookings, setAllBookings] = useState<any[]>([]);
+    const [allPendingBookings, setAllPendingBookings] = useState<any[]>([]);
 
     type Booking = {
         booking_id: number;
@@ -185,6 +187,54 @@ const FacultyDashboard: React.FC = () => {
         getBookingsByDate();
     }, [selectedDate]);
 
+    useEffect(() => {
+        getPendingBookings();
+    }, []);
+
+    const getPendingBookings = async () => {
+        try {
+            const res = await fetch('/api/booking/getpendingbookings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+            });
+
+            if (res.ok) {
+                const {bookings} = await res.json();
+                setAllPendingBookings(bookings);
+                return;
+            } else {
+                return;
+            }
+        } catch (error) {
+            return;
+        }
+    }
+
+    const handleButtonClick = async () => {
+        await makeBooking();
+        setSelectedTime("");
+        await getBookingsByDate();
+        await getBookingsForStudent();
+    };
+
+    const updateBookingStatus = async (bookingId: number, status: string) => {
+        try {
+            const res = await fetch('/api/booking/updatebooking', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ bookingId: bookingId, newStatus: status }),
+            });
+
+            if (res.ok) {
+                return;
+            } else {
+                return;
+            }
+        } catch (error) {
+            return;
+        }
+    };
+
     return (
         <div className="flex flex-col min-h-screen bg-gradient-to-r from-yellow-100 to-orange-200 text-black">
             {/* Logo and Header */}
@@ -203,6 +253,47 @@ const FacultyDashboard: React.FC = () => {
             {/* Main Content */}
             <div className="flex flex-col items-center px-5">
                 <h1 className="text-4xl font-extrabold py-5">Welcome {currFaculty?.full_name}!</h1>
+                <div className="w-full max-w-4xl mt-10 bg-white p-5 rounded-lg shadow-lg">
+                    <h2 className="text-2xl font-bold mb-4">Approve Bookings</h2>
+                    <ul>
+                        {allPendingBookings && allPendingBookings
+                            .filter(booking => new Date(booking.date) >= new Date(new Date().toLocaleDateString('en-CA')))
+                            .map((booking) => (
+                                <li
+                                    key={booking.booking_id}
+                                    className="flex justify-between items-center p-3 border-b border-gray-300"
+                                >
+                                    <div>
+                                        <p className="font-bold">{booking.room_id}</p>
+                                        <p>{(booking.date).split('T')[0]} {booking.start_time} - {booking.end_time}</p>
+                                    </div>
+                                    <div className="flex space-x-2">
+                                        <button
+                                            className="bg-green-500 text-white px-3 py-1 rounded-full hover:bg-green-400"
+                                            onClick={async () => {
+                                                await updateBookingStatus(booking.booking_id, 'Approved');
+                                                await getPendingBookings();
+                                            }}
+                                        >
+                                            Approve
+                                        </button>
+                                        <button
+                                            className="bg-red-500 text-white px-3 py-1 rounded-full hover:bg-red-400"
+                                            onClick={async () => {
+                                                await updateBookingStatus(booking.booking_id, 'Declined');
+                                                await getPendingBookings();
+                                            }}
+                                        >
+                                            Decline
+                                        </button>
+                                    </div>
+                                </li>
+                            ))}
+                    </ul>
+                </div>
+
+
+
 
                 {/* My Bookings Section */}
                 <div className="w-full max-w-4xl mt-10 bg-white p-5 rounded-lg shadow-lg">
@@ -243,8 +334,7 @@ const FacultyDashboard: React.FC = () => {
                                 <button
                                     className="bg-blue-500 text-white p-2 rounded-full hover:bg-blue-400 m-4"
                                     onClick={() => {
-                                        const date = new Date(); // You can customize the date as needed
-                                        makeBooking();
+                                        handleButtonClick();
                                     }}
                                 >Checkout</button>
                             </div>
