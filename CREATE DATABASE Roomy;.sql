@@ -45,9 +45,6 @@ CREATE TABLE Bookings (
     end_time TIME NOT NULL,
     status ENUM('Pending', 'Approved', 'Declined') DEFAULT 'Pending',
     approved_by ENUM('Faculty', 'Admin'),
-    FOREIGN KEY (reserver_id) REFERENCES Students(student_id) ON DELETE CASCADE,
-    FOREIGN KEY (reserver_id) REFERENCES Faculty(faculty_id) ON DELETE CASCADE,
-    FOREIGN KEY (reserver_id) REFERENCES Admins(admin_id) ON DELETE CASCADE,
     FOREIGN KEY (room_id) REFERENCES StudyRooms(room_id) ON DELETE CASCADE
 );
 

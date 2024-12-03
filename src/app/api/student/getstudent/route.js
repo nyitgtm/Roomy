@@ -3,10 +3,12 @@ import mysql from 'mysql2/promise';
 export async function POST(req, res) {
     try {
         // Parse request body
-        const { studentId, password } = await req.json();
+        const { studentId } = await req.json();
 
-        if (!studentId || !password) {
-            return res.status(400).json({ error: 'Missing studentId or password' });
+        if (!studentId) {
+            return new Response(JSON.stringify({ message: 'Invalid Data' }), {
+                status: 400,
+            });
         }
 
         // Create a new connection for the request
@@ -19,21 +21,22 @@ export async function POST(req, res) {
 
         console.log('Connected to MySQL');
 
-        // Execute query
-        const [rows] = await connection.execute(
-            'SELECT * FROM Students WHERE student_id = ? AND password = ?',
-            [studentId, password]
+        // Get the student by ID from the database
+        const [student] = await connection.execute(
+            'SELECT * FROM Students WHERE student_id = ?',
+            [studentId]
         );
 
         // Close the connection
         await connection.end();
 
-        if (rows.length === 0) {
-            return res.status(404).json({ error: 'Student not found or incorrect password' });
+        if (student.length === 0) {
+            return new Response(JSON.stringify({ message: 'Student Not Found' }), {
+                status: 404,
+            });
         }
 
-        const student = rows[0];
-        // Return the authenticated user
+        // Return success response with student data
         return new Response(JSON.stringify({ message: 'Succesfully logged in', student: student }), {
             status: 200
         });

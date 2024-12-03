@@ -22,6 +22,17 @@ const LoginPage: React.FC = () => {
             });
 
             if (res.ok) {
+                const {student} = await res.json();
+                localStorage.setItem('student', student);
+                type Student = {
+                    student_id: number;
+                    email: string;
+                    password: string;
+                    full_name: string;
+                    is_banned: boolean;
+                };
+
+                localStorage.setItem('student', JSON.stringify(student as Student));
                 window.location.href = '/student/dashboard';
             } else {
                 const data = await res.json();
