@@ -393,6 +393,24 @@ const AdminDashboard: React.FC = () => {
                 {/* Student Modifying Area */}
                 <div className="w-full max-w-4xl mt-10 bg-white p-5 rounded-lg shadow-lg">
                     <h2 className="text-2xl font-bold mb-4">Manage Students</h2>
+                    <div className="w-full max-w-4xl p-5">
+                        <h2 className="text-xl font-bold mb-4">Search Students</h2>
+                        <input
+                            type="text"
+                            className="w-full p-2 border border-gray-300 rounded-lg mb-4"
+                            placeholder="Search by name or email or student ID"
+                            onChange={(e) => {
+                                const searchTerm = e.target.value.toLowerCase();
+                                setAllStudents(prevStudents =>
+                                    prevStudents.filter(student =>
+                                        student.full_name.toLowerCase().includes(searchTerm) ||
+                                        student.email.toLowerCase().includes(searchTerm) ||
+                                        student.student_id.toString().includes(searchTerm)
+                                    )
+                                );
+                            }}
+                        />
+                    </div>
                     <ul>
                         {allStudents && allStudents.map((student) => (
                             <li
