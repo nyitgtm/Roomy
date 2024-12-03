@@ -14,6 +14,11 @@ export async function POST(req) {
 
         console.log('Connected to MySQL');
 
+        // Make query to delete bookings with room_id
+        await connection.execute(
+            'DELETE FROM Bookings WHERE room_id = ?',
+            [room_id]
+        );
         // Make query to add study room
         await connection.execute(
             'DELETE FROM StudyRooms WHERE room_id = ?',

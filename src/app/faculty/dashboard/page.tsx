@@ -307,7 +307,7 @@ const FacultyDashboard: React.FC = () => {
                                     className="flex justify-between items-center p-3 border-b border-gray-300"
                                 >
                                     <div>
-                                        <p className="font-bold">{booking.room_id}</p>
+                                        <span className='font-bold'>{studyRooms.find(room => room.room_id === booking.room_id)?.room_name}</span>
                                         <p>{(booking.date).split('T')[0]} {booking.start_time} - {booking.end_time}</p>
                                     </div>
                                     <span
